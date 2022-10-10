@@ -1,5 +1,27 @@
 use std::collections::HashMap;
 
+#[derive(Clone, Debug)]
+pub enum HashMapValue {
+    Str(String),
+    Float32(f32),
+}
+
+impl HashMapValue {
+    pub fn str(&self) -> &String {
+        match self {
+            HashMapValue::Str(v) => v,
+            _ => panic!("Not HashMapValue::Str"),
+        }
+    }
+    pub fn f32(&self) -> &f32 {
+        match self {
+            HashMapValue::Float32(v) => v,
+            _ => panic!("Not HashMapValue::Str"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Owner {
     name: String,
     investment: f32,
@@ -11,6 +33,7 @@ impl Owner {
     }
 }
 
+#[derive(Debug)]
 pub struct Corporation {
     pub name: String,
     pub owners: Vec<Owner>,
@@ -48,19 +71,23 @@ impl Corporation {
         }
     }
 
-    pub fn get_owners_ownership_percentages(&self) -> Vec<HashMap<String, f32>> {
+    pub fn get_owners_ownership_percentages(&self) -> Vec<HashMap<String, HashMapValue>> {
         let owners_ownership_percentages = self
             .owners
             .iter()
             .map(|owner| {
-                let mut book_hashmap = HashMap::new();
-                book_hashmap.insert(
-                    owner.name.clone(),
-                    (owner.investment / self.total_investment * 100.0).round(),
+                let mut owner_hashmap: HashMap<String, HashMapValue> = HashMap::new();
+                owner_hashmap.insert("name".to_string(), HashMapValue::Str(owner.name.clone()));
+                owner_hashmap.insert(
+                    "percentage".to_string(),
+                    HashMapValue::Float32(
+                        (owner.investment / self.total_investment * 100.0).round(),
+                    ),
                 );
-                book_hashmap
+
+                owner_hashmap
             })
-            .collect::<Vec<HashMap<String, f32>>>();
+            .collect::<Vec<HashMap<String, HashMapValue>>>();
         owners_ownership_percentages
     }
 
@@ -71,13 +98,49 @@ impl Corporation {
     }
 
     pub fn is_owner_majority_shareholder(&self, owner_name: &str) -> bool {
-        let ownership_percentage =
-            self.get_owner_ownership_percentage_by_investment(owner_name) as u64;
+        let owners_ownership_percentages = self.get_owners_ownership_percentages();
+        let mut major_shareholder: HashMap<String, HashMapValue> = HashMap::new();
 
-        if ownership_percentage >= 50 {
-            return true;
+        let first_owner = &owners_ownership_percentages[0];
+
+        println!("{:?}", first_owner);
+        for key in first_owner.keys() {
+            let key = key.to_string();
+
+            let value_enum = first_owner.get(&key).clone().unwrap();
+
+            match value_enum {
+                HashMapValue::Str(value_enum) => {
+                    major_shareholder.insert(key, HashMapValue::Str(value_enum.to_string()))
+                }
+                HashMapValue::Float32(value_enum) => {
+                    major_shareholder.insert(key, HashMapValue::Float32(*value_enum))
+                }
+            };
         }
 
-        false
+        let major_shareholder =
+            owners_ownership_percentages
+                .iter()
+                .fold(major_shareholder, |mut acc, owner| {
+                    let current_major_shareholder_percentage = acc.get("percentage").unwrap().f32();
+                    let owner_percentage = owner.get("percentage").unwrap().f32();
+                    let o_name = owner.get("name").unwrap().str();
+
+                    if current_major_shareholder_percentage < owner_percentage {
+                        acc.insert("name".to_string(), HashMapValue::Str(o_name.to_string()));
+                        acc.insert(
+                            "percentage".to_string(),
+                            HashMapValue::Float32(owner_percentage.clone()),
+                        );
+                        return acc;
+                    } else {
+                        return acc;
+                    }
+                });
+
+        let major_share_holder_name = major_shareholder.get("name").unwrap().str();
+
+        major_share_holder_name == owner_name
     }
 }
