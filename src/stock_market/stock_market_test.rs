@@ -1,7 +1,7 @@
 use crate::stock_market::stock_market::StockData;
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use rand::Rng;
-use rust_decimal::{prelude::FromPrimitive, Decimal};
+use rust_decimal::{prelude::{FromPrimitive, ToPrimitive}, Decimal};
 
 #[cfg(test)]
 use crate::stock_market::stock_market::*;
@@ -13,12 +13,13 @@ fn generate_utc_date_from_date_string(date_string: &str) -> DateTime<Utc> {
 
 fn generate_stock_data(date_string: &str) -> StockData {
     let mut rng = rand::thread_rng();
+    let high = Decimal::from_f64(rng.gen_range(10.0..100.0))
+        .unwrap()
+        .round_dp(2);
     StockData::new(
         generate_utc_date_from_date_string(date_string),
-        Decimal::from_f64(rng.gen_range(10.0..100.0))
-            .unwrap()
-            .round_dp(2),
-        Decimal::from_f64(rng.gen_range(10.0..100.0))
+        high,
+        Decimal::from_f64(rng.gen_range(10.0..high.to_f64().unwrap()))
             .unwrap()
             .round_dp(2),
         Decimal::from_f64(rng.gen_range(10.0..100.0))
