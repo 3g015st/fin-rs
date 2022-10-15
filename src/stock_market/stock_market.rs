@@ -1,4 +1,8 @@
-use chrono::prelude::*;
+use chrono::{prelude::*, Duration};
+use plotters::{
+    prelude::{BitMapBackend, IntoDrawingArea},
+    style::WHITE,
+};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
@@ -90,18 +94,49 @@ impl StockInformation {
     }
 
     /*** TODO: Refactor. Since get_change_of_stock_data_series is O(n), by calling that function inside this function we're looping
-     * 2x, first loop for building stock change data and second loop is for finding the stock data with specific date. 
+     * 2x, first loop for building stock change data and second loop is for finding the stock data with specific date.
      * What happens is Map -> Filter pattern.
-    ***/
-    pub fn get_change_of_stock_data_with_given_date(&self, search_date : DateTime<Utc>) -> Option<StockData> {
+     ***/
+    pub fn get_change_of_stock_data_with_given_date(
+        &self,
+        search_date: DateTime<Utc>,
+    ) -> Option<StockData> {
         let stock_data_series_with_change = self.get_change_of_stock_data_series();
 
         match stock_data_series_with_change {
             Some(stock_data_series_with_change) => {
-                return stock_data_series_with_change.into_iter().find(|stock_data| stock_data.date == search_date);
+                return stock_data_series_with_change
+                    .into_iter()
+                    .find(|stock_data| stock_data.date == search_date);
             }
-            None => None
+            None => None,
         }
-      
+    }
+    fn show_chart(&self, directory: Option<String>, height: Option<u32>, width: Option<u32>) {
+        let dt = Utc::now();
+        let timestamp: i64 = dt.timestamp();
+
+        let filepath = format!(
+            "{}/{}_candlestick_chart.png",
+            directory.unwrap_or("chart_outputs".to_string()),
+            timestamp
+        );
+        let root = BitMapBackend::new(&filepath, (height.unwrap_or(1920), width.unwrap_or(1080)))
+            .into_drawing_area();
+
+        root.fill(&WHITE)?;
+
+        let stock_data_series = &self.stock_data_series;
+        let stock_data_series_last_day_idx = stock_data_series.len() - 1;
+        
+        let (to_date, from_date) = (
+            stock_data_series[0].date.date() + Duration::days(1),
+            stock_data_series[stock_data_series_last_day_idx]
+                .date
+                .date()
+                - Duration::days(1),
+        );
+
+
     }
 }
