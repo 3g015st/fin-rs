@@ -241,7 +241,7 @@ impl StockInformation {
         let mut chart = chart_builder
             .x_label_area_size(40)
             .y_label_area_size(40)
-            .caption(caption, ("sans-serif", 50.0).into_font())
+            .caption(caption, ("sans-serif", 25.0).into_font())
             .build_cartesian_2d(x_spec, y_spec)?;
 
         chart.configure_mesh().light_line_style(&WHITE).draw()?;
@@ -265,8 +265,9 @@ impl StockInformation {
             for (_, ma_tuple) in moving_averages_2d.iter().enumerate() {
                 let (ma_day, moving_averages) = ma_tuple;
                 let mut ma_line_data: Vec<(Date<Utc>, f64)> = vec![];
+                let ma_len = moving_averages.len();
 
-                for i in 0..moving_averages.len() {
+                for i in 0..ma_len {
                     // Let start moving average day at the day where adequate data has been formed.
                     let ma_day = i + ma_day.to_usize().unwrap() - 1;
                     ma_line_data.push((
@@ -275,21 +276,22 @@ impl StockInformation {
                     ));
                 }
 
-                let line_series_label = format!("SMA {}", &ma_day);
+                if ma_len > 0 {
+                    let line_series_label = format!("SMA {}", &ma_day);
 
-                // Fill in moving averages line data series
-                chart
-                    .draw_series(LineSeries::new(ma_line_data, BLUE.stroke_width(2)))
-                    .unwrap()
-                    .label(line_series_label)
-                    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+                    // Fill in moving averages line data series
+                    chart
+                        .draw_series(LineSeries::new(ma_line_data, BLUE.stroke_width(2)))
+                        .unwrap()
+                        .label(line_series_label)
+                        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+                }
 
                 // Display SMA Legend
                 chart
                     .configure_series_labels()
-                    .position(SeriesLabelPosition::UpperMiddle)
+                    .position(SeriesLabelPosition::UpperLeft)
                     .label_font(("sans-serif", 30.0).into_font())
-                    .background_style(WHITE.filled())
                     .draw()
                     .unwrap();
             }
