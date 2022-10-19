@@ -1,16 +1,16 @@
-use std::{
-    error::{self, Error},
-    fs,
-};
+use std::{error::Error, fs};
 
 use chrono::{prelude::*, Duration};
 use plotters::{
+    coord::types::RangedCoordf64,
     prelude::{
-        BitMapBackend, CandleStick, ChartBuilder, IntoDrawingArea, PathElement, SeriesLabelPosition,
+        BitMapBackend, CandleStick, Cartesian2d, ChartBuilder, ChartContext, IntoDrawingArea,
+        PathElement, RangedDate, SeriesLabelPosition,
     },
     series::LineSeries,
     style::{Color, IntoFont, BLUE, GREEN, RED, WHITE},
 };
+use rayon::prelude::*;
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
     Decimal,
@@ -175,7 +175,7 @@ impl StockInformation {
     }
     pub fn show_chart(
         &self,
-        ma_days: Option<u16>,
+        ma_days: Vec<u16>,
         directory: Option<String>,
         height: Option<u32>,
         width: Option<u32>,
@@ -248,45 +248,50 @@ impl StockInformation {
 
         chart.draw_series(candlesticks)?;
 
-        let ma_days = ma_days.unwrap_or(0);
+        if ma_days.len() > 0 {
+            let moving_averages_2d: Vec<_> = ma_days
+                .par_iter()
+                .filter(|ma_day| ma_day > &&0)
+                .map(|ma_day| {
+                    let moving_averages = self.get_moving_averages(ma_day.clone());
 
-        if ma_days > 0 {
-            let moving_averages = self.get_moving_averages(ma_days);
-
-            match moving_averages {
-                Some(moving_averages) => {
-                    let mut ma_line_data: Vec<(Date<Utc>, f64)> = vec![];
-                    for i in 0..moving_averages.len() {
-                        // Let start moving average day at the day where adequate data has been formed.
-
-                        let ma_day = i + ma_days.to_usize().unwrap() - 1;
-                        ma_line_data.push((
-                            stock_data_series[ma_day].date.date(),
-                            moving_averages[i].to_f64().unwrap(),
-                        ));
+                    match moving_averages {
+                        Some(moving_averages) => return (ma_day, moving_averages),
+                        None => return (ma_day, vec![]),
                     }
+                })
+                .collect();
 
-                    let line_series_label = format!("SMA {}", &ma_days);
+            for (_, ma_tuple) in moving_averages_2d.iter().enumerate() {
+                let (ma_day, moving_averages) = ma_tuple;
+                let mut ma_line_data: Vec<(Date<Utc>, f64)> = vec![];
 
-                    // Fill in moving averages line data series
-                    chart
-                        .draw_series(LineSeries::new(ma_line_data, BLUE.stroke_width(2)))
-                        .unwrap()
-                        .label(line_series_label)
-                        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
-
-                    // Display SMA Legend
-                    chart
-                        .configure_series_labels()
-                        .position(SeriesLabelPosition::UpperMiddle)
-                        .label_font(("sans-serif", 30.0).into_font())
-                        .background_style(WHITE.filled())
-                        .draw()
-                        .unwrap();
+                for i in 0..moving_averages.len() {
+                    // Let start moving average day at the day where adequate data has been formed.
+                    let ma_day = i + ma_day.to_usize().unwrap() - 1;
+                    ma_line_data.push((
+                        stock_data_series[ma_day].date.date(),
+                        moving_averages[i].to_f64().unwrap(),
+                    ));
                 }
-                None => {
-                    println!("No moving averages found")
-                }
+
+                let line_series_label = format!("SMA {}", &ma_day);
+
+                // Fill in moving averages line data series
+                chart
+                    .draw_series(LineSeries::new(ma_line_data, BLUE.stroke_width(2)))
+                    .unwrap()
+                    .label(line_series_label)
+                    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+
+                // Display SMA Legend
+                chart
+                    .configure_series_labels()
+                    .position(SeriesLabelPosition::UpperMiddle)
+                    .label_font(("sans-serif", 30.0).into_font())
+                    .background_style(WHITE.filled())
+                    .draw()
+                    .unwrap();
             }
         }
 
