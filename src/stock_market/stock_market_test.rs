@@ -406,10 +406,9 @@ fn it_creates_a_new_stock_information_with_data_series_and_show_chart_with_movin
         stock_data_series,
     );
 
-    let ma_days: Vec<u16> = vec![20, 5, 0];
+    let ma_days = vec![7, 2, 0];
     let chart = stock_information.show_chart(ma_days, None, None, None);
 
-    println!("chart {:?}", chart);
     match chart {
         Ok(_) => {
             assert!(true)

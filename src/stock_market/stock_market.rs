@@ -2,15 +2,15 @@ use std::{error::Error, fs};
 
 use chrono::{prelude::*, Duration};
 use plotters::{
-    coord::types::RangedCoordf64,
     prelude::{
-        BitMapBackend, CandleStick, Cartesian2d, ChartBuilder, ChartContext, IntoDrawingArea,
-        PathElement, RangedDate, SeriesLabelPosition,
+        BitMapBackend, CandleStick, ChartBuilder, IntoDrawingArea, PathElement, SeriesLabelPosition,
     },
     series::LineSeries,
-    style::{Color, IntoFont, BLUE, GREEN, RED, WHITE},
+    style::{
+        full_palette::{ORANGE, PURPLE},
+        Color, IntoFont, RGBColor, BLUE, GREEN, RED, WHITE,
+    },
 };
-use rayon::prelude::*;
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
     Decimal,
@@ -185,6 +185,10 @@ impl StockInformation {
             Err("Insufficient stock data series length")?;
         }
 
+        if ma_days.len() > 3 {
+            Err("Exceeded the limit of moving averages to plot")?;
+        }
+
         let dt = Utc::now();
         let timestamp: i64 = dt.timestamp();
 
@@ -238,33 +242,37 @@ impl StockInformation {
         let x_spec = from_date..to_date;
         let y_spec = min_low_price.to_f64().unwrap()..max_high_price.to_f64().unwrap();
         let caption = format!("{} Stock Price Movement", &self.company_name);
+        let font_style = ("sans-serif", 25.0).into_font();
+
         let mut chart = chart_builder
             .x_label_area_size(40)
             .y_label_area_size(40)
-            .caption(caption, ("sans-serif", 25.0).into_font())
+            .caption(caption, font_style.clone())
             .build_cartesian_2d(x_spec, y_spec)?;
 
         chart.configure_mesh().light_line_style(&WHITE).draw()?;
 
         chart.draw_series(candlesticks)?;
 
+        // Draw moving averages lines
         if ma_days.len() > 0 {
+            // Parallel computed moving averages
             let moving_averages_2d: Vec<_> = ma_days
-                .par_iter()
+                .into_iter()
                 .filter(|ma_day| ma_day > &&0)
                 .map(|ma_day| {
                     let moving_averages = self.get_moving_averages(ma_day.clone());
 
                     match moving_averages {
                         Some(moving_averages) => return (ma_day, moving_averages),
-                        None => return (ma_day, vec![]),
+                        None => return (ma_day, Vec::with_capacity(0)),
                     }
                 })
                 .collect();
 
-            for (_, ma_tuple) in moving_averages_2d.iter().enumerate() {
+            for (idx, ma_tuple) in moving_averages_2d.iter().enumerate() {
                 let (ma_day, moving_averages) = ma_tuple;
-                let mut ma_line_data: Vec<(Date<Utc>, f64)> = vec![];
+                let mut ma_line_data: Vec<(Date<Utc>, f64)> = Vec::with_capacity(3);
                 let ma_len = moving_averages.len();
 
                 for i in 0..ma_len {
@@ -277,21 +285,29 @@ impl StockInformation {
                 }
 
                 if ma_len > 0 {
+                    let chosen_color = [BLUE, PURPLE, ORANGE][idx];
+
                     let line_series_label = format!("SMA {}", &ma_day);
+
+                    let legend = |color: RGBColor| {
+                        move |(x, y)| PathElement::new([(x, y), (x + 20, y)], color)
+                    };
+
+                    let sma_line = LineSeries::new(ma_line_data, chosen_color.stroke_width(2));
 
                     // Fill in moving averages line data series
                     chart
-                        .draw_series(LineSeries::new(ma_line_data, BLUE.stroke_width(2)))
+                        .draw_series(sma_line)
                         .unwrap()
                         .label(line_series_label)
-                        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+                        .legend(legend(chosen_color));
                 }
 
                 // Display SMA Legend
                 chart
                     .configure_series_labels()
                     .position(SeriesLabelPosition::UpperLeft)
-                    .label_font(("sans-serif", 30.0).into_font())
+                    .label_font(font_style.clone())
                     .draw()
                     .unwrap();
             }
