@@ -1,7 +1,4 @@
-use std::{
-    error::{self, Error},
-    fs,
-};
+use std::{error::Error, fs};
 
 use chrono::{prelude::*, Duration};
 use plotters::{
@@ -9,7 +6,10 @@ use plotters::{
         BitMapBackend, CandleStick, ChartBuilder, IntoDrawingArea, PathElement, SeriesLabelPosition,
     },
     series::LineSeries,
-    style::{Color, IntoFont, BLUE, GREEN, RED, WHITE},
+    style::{
+        full_palette::{ORANGE, PURPLE},
+        Color, IntoFont, RGBColor, BLUE, GREEN, RED, WHITE,
+    },
 };
 use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
@@ -175,7 +175,7 @@ impl StockInformation {
     }
     pub fn show_chart(
         &self,
-        ma_days: Option<u16>,
+        ma_days: Vec<u16>,
         directory: Option<String>,
         height: Option<u32>,
         width: Option<u32>,
@@ -183,6 +183,10 @@ impl StockInformation {
         let stock_data_series = &self.stock_data_series;
         if stock_data_series.len() == 0 {
             Err("Insufficient stock data series length")?;
+        }
+
+        if ma_days.len() > 3 {
+            Err("Exceeded the limit of moving averages to plot")?;
         }
 
         let dt = Utc::now();
@@ -238,55 +242,74 @@ impl StockInformation {
         let x_spec = from_date..to_date;
         let y_spec = min_low_price.to_f64().unwrap()..max_high_price.to_f64().unwrap();
         let caption = format!("{} Stock Price Movement", &self.company_name);
+        let font_style = ("sans-serif", 25.0).into_font();
+
         let mut chart = chart_builder
             .x_label_area_size(40)
             .y_label_area_size(40)
-            .caption(caption, ("sans-serif", 50.0).into_font())
+            .caption(caption, font_style.clone())
             .build_cartesian_2d(x_spec, y_spec)?;
 
         chart.configure_mesh().light_line_style(&WHITE).draw()?;
 
         chart.draw_series(candlesticks)?;
 
-        let ma_days = ma_days.unwrap_or(0);
+        // Draw moving averages lines
+        if ma_days.len() > 0 {
+            // Parallel computed moving averages
+            let moving_averages_2d: Vec<_> = ma_days
+                .into_iter()
+                .filter(|ma_day| ma_day > &&0)
+                .map(|ma_day| {
+                    let moving_averages = self.get_moving_averages(ma_day.clone());
 
-        if ma_days > 0 {
-            let moving_averages = self.get_moving_averages(ma_days);
-
-            match moving_averages {
-                Some(moving_averages) => {
-                    let mut ma_line_data: Vec<(Date<Utc>, f64)> = vec![];
-                    for i in 0..moving_averages.len() {
-                        // Let start moving average day at the day where adequate data has been formed.
-
-                        let ma_day = i + ma_days.to_usize().unwrap() - 1;
-                        ma_line_data.push((
-                            stock_data_series[ma_day].date.date(),
-                            moving_averages[i].to_f64().unwrap(),
-                        ));
+                    match moving_averages {
+                        Some(moving_averages) => return (ma_day, moving_averages),
+                        None => return (ma_day, Vec::with_capacity(0)),
                     }
+                })
+                .collect();
 
-                    let line_series_label = format!("SMA {}", &ma_days);
+            for (idx, ma_tuple) in moving_averages_2d.iter().enumerate() {
+                let (ma_day, moving_averages) = ma_tuple;
+                let mut ma_line_data: Vec<(Date<Utc>, f64)> = Vec::with_capacity(3);
+                let ma_len = moving_averages.len();
+
+                for i in 0..ma_len {
+                    // Let start moving average day at the day where adequate data has been formed.
+                    let ma_day = i + ma_day.to_usize().unwrap() - 1;
+                    ma_line_data.push((
+                        stock_data_series[ma_day].date.date(),
+                        moving_averages[i].to_f64().unwrap(),
+                    ));
+                }
+
+                if ma_len > 0 {
+                    let chosen_color = [BLUE, PURPLE, ORANGE][idx];
+
+                    let line_series_label = format!("SMA {}", &ma_day);
+
+                    let legend = |color: RGBColor| {
+                        move |(x, y)| PathElement::new([(x, y), (x + 20, y)], color)
+                    };
+
+                    let sma_line = LineSeries::new(ma_line_data, chosen_color.stroke_width(2));
 
                     // Fill in moving averages line data series
                     chart
-                        .draw_series(LineSeries::new(ma_line_data, BLUE.stroke_width(2)))
+                        .draw_series(sma_line)
                         .unwrap()
                         .label(line_series_label)
-                        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+                        .legend(legend(chosen_color));
+                }
 
-                    // Display SMA Legend
-                    chart
-                        .configure_series_labels()
-                        .position(SeriesLabelPosition::UpperMiddle)
-                        .label_font(("sans-serif", 30.0).into_font())
-                        .background_style(WHITE.filled())
-                        .draw()
-                        .unwrap();
-                }
-                None => {
-                    println!("No moving averages found")
-                }
+                // Display SMA Legend
+                chart
+                    .configure_series_labels()
+                    .position(SeriesLabelPosition::UpperLeft)
+                    .label_font(font_style.clone())
+                    .draw()
+                    .unwrap();
             }
         }
 
