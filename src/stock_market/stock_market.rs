@@ -322,4 +322,20 @@ impl StockInformation {
 
         Ok(true)
     }
+    pub fn get_post_split_data(
+        future_stock: Decimal,
+        held_stock: Decimal,
+        no_of_shares: Decimal,
+        share_price: Decimal,
+    ) -> (Decimal, Decimal, Decimal) {
+        let post_split_no_of_shares = (future_stock * no_of_shares) / held_stock;
+        let post_split_share_price = (held_stock * share_price) / future_stock;
+        let bought_fractional_part = &post_split_no_of_shares.fract() * &post_split_share_price;
+
+        (
+            post_split_no_of_shares.trunc(),
+            post_split_share_price,
+            bought_fractional_part,
+        )
+    }
 }
