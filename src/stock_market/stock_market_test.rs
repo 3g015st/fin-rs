@@ -5,6 +5,7 @@ use rust_decimal::{
     prelude::{FromPrimitive, ToPrimitive},
     Decimal,
 };
+use rust_decimal_macros::dec;
 
 #[cfg(test)]
 use crate::stock_market::stock_market::*;
@@ -439,4 +440,22 @@ fn it_creates_a_new_stock_information_with_data_series_and_does_not_show_chart()
             assert!(true);
         }
     }
+}
+
+#[test]
+fn it_gets_post_split_data() {
+    let post_split_data =
+        StockInformation::get_post_split_data(dec!(5), dec!(4), dec!(942), dec!(56));
+
+    assert_eq!(post_split_data.0, dec!(1177));
+    assert_eq!(post_split_data.1, dec!(44.80));
+    assert_eq!(post_split_data.2, dec!(22.40));
+
+    let post_split_data =
+        StockInformation::get_post_split_data(dec!(1), dec!(20), dec!(580_000_000), dec!(0.64));
+    println!("{:?} KAMOTE", post_split_data);
+
+    assert_eq!(post_split_data.0, dec!(29_000_000));
+    assert_eq!(post_split_data.1, dec!(12.80));
+    assert_eq!(post_split_data.2, dec!(0));
 }
