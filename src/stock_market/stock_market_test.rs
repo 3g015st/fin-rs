@@ -459,3 +459,24 @@ fn it_gets_post_split_data() {
     assert_eq!(post_split_data.1, dec!(12.80));
     assert_eq!(post_split_data.2, dec!(0));
 }
+
+#[test]
+fn it_gets_dividend_income() {
+    let dividend_income = StockInformation::get_dividend_income(dec!(2000), dec!(0.51), dec!(4));
+
+    assert_eq!(dividend_income, dec!(4080));
+}
+
+#[test]
+fn it_gets_yield_rate() {
+    let yield_rate = StockInformation::get_yield_rate(dec!(1.4), dec!(57.4));
+
+    assert_eq!(yield_rate, dec!(2.4));
+}
+
+#[test]
+fn it_gets_interest_income() {
+    let interest_income = StockInformation::get_interest_income(dec!(5.7), dec!(1000));
+
+    assert_eq!(interest_income, dec!(57));
+}

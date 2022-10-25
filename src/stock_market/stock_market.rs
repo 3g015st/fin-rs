@@ -338,4 +338,18 @@ impl StockInformation {
             bought_fractional_part,
         )
     }
+    pub fn get_dividend_income(
+        shares: Decimal,
+        price_per_share: Decimal,
+        no_of_times: Decimal,
+    ) -> Decimal {
+        (shares * price_per_share) * no_of_times
+    }
+    pub fn get_yield_rate(dividend_per_share: Decimal, price_per_share: Decimal) -> Decimal {
+        ((dividend_per_share / price_per_share) * dec!(100)).round_dp(1)
+    }
+    pub fn get_interest_income(interest_rate: Decimal, amount: Decimal) -> Decimal {
+        let interest = interest_rate / dec!(100);
+        interest * amount
+    }
 }
