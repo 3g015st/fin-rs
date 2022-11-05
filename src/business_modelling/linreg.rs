@@ -20,30 +20,41 @@ impl Linreg {
         }
 
         // Get x̄ (domain)
-        let x̄ = &domain.iter().fold(0.0, |mut acc, x| {
+        let domain_mean = &domain.iter().fold(0.0, |mut acc, x| {
             acc = acc + x;
             return acc;
         }) / domain_len.to_f32().unwrap();
 
         // Get ȳ (range)
-        let ȳ = &range.iter().fold(0.0, |mut acc, y| {
+        let range_mean = &range.iter().fold(0.0, |mut acc, y| {
             acc = acc + y;
             return acc;
         }) / range_len.to_f32().unwrap();
 
         // Loop over
-        // Get domainDiff = x -  x̄
-        // Get rangeDiff = y -  ȳ
-        // Get prod = domainDiff * rangeDiff
         // mxNumerator = Σ(prod)
-        // domainDiffSquared
+        let mut mx_numerator = 0.0;
         // mxDivisor = Σ(domainDiffSquared)
-        // End loop here
+        let mut mx_divisor = 0.0;
+
+        for idx in 0..domain_len {
+            // Get domainDiff = x -  x̄
+            let domain_diff = &domain[idx] - &domain_mean;
+            // Get rangeDiff = y -  ȳ
+            let range_diff = &range[idx] - &range_mean;
+
+            // Get prod = domainDiff * rangeDiff
+            let product = &domain_diff * &range_diff;
+            mx_numerator = mx_numerator + product;
+
+            let domain_diff_squared = f32::powf(domain_diff, 2.0);
+            mx_divisor = mx_divisor + domain_diff_squared;
+        }
         // mx = mxNumerator / mxDivisor
-
+        let mx = mx_numerator / mx_divisor;
         // Get b = ȳ - mx(x̄)
+        let b = &range_mean - (mx * domain_mean);
 
-        // Return (mx, b)
-        return Ok((0.0, 0.0));
+        return Ok((mx, b));
     }
 }
