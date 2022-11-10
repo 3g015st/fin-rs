@@ -6,7 +6,7 @@ use plotters::{
     backend::RGBPixel,
     prelude::{BitMapBackend, ChartBuilder, Circle, IntoDrawingArea},
     series::LineSeries,
-    style::{full_palette::PURPLE, Color, IntoFont, GREEN, WHITE},
+    style::{full_palette::PURPLE, Color, IntoFont, BLUE, GREEN, WHITE},
 };
 use rust_decimal::prelude::ToPrimitive;
 
@@ -119,108 +119,120 @@ impl BusinessModelling {
         return Ok(true);
     }
 
-    // pub fn demand_supply_scatterplot(
-    //     prices: &Vec<f32>,
-    //     quantity_purchase: &Vec<f32>,
-    //     quantity_produce: &Vec<f32>,
-    //     title: String,
-    //     directory: Option<String>,
-    //     height: Option<u32>,
-    //     width: Option<u32>,
-    // ) -> Result<bool, Box<dyn Error>> {
-    //     let prices_len = prices.len();
-    //     let quantity_purchase_len = quantity_purchase.len();
-    //     let quantity_produce_len = quantity_produce.len();
+    pub fn demand_supply_scatterplot(
+        prices: &Vec<f32>,
+        quantity_purchase: &Vec<f32>,
+        quantity_produce: &Vec<f32>,
+        title: String,
+        directory: Option<String>,
+        height: Option<u32>,
+        width: Option<u32>,
+    ) -> Result<bool, Box<dyn Error>> {
+        let prices_len = prices.len();
+        let quantity_purchase_len = quantity_purchase.len();
+        let quantity_produce_len = quantity_produce.len();
 
-    //     if prices_len == 0 || quantity_purchase_len == 0 || quantity_produce_len == 0 {
-    //         // Check if domain and range is not empty
-    //         Err("Insufficient lengths")?;
-    //     } else if (prices_len != quantity_purchase_len) || (prices_len != quantity_produce_len) {
-    //         // Check if domain and range has the same lengths
-    //         Err("Range length is not equal to domain length or vice versa")?;
-    //     }
+        if prices_len == 0 || quantity_purchase_len == 0 || quantity_produce_len == 0 {
+            // Check if domain and range is not empty
+            Err("Insufficient lengths")?;
+        } else if (prices_len != quantity_purchase_len) || (prices_len != quantity_produce_len) {
+            // Check if domain and range has the same lengths
+            Err("Range length is not equal to domain length or vice versa")?;
+        }
 
-    //     // Determine if max demand quantity is > max produce quantity
+        // Determine if max demand quantity is > max produce quantity
 
-    //     let max_range = {
-    //         let max_demand_qty = &quantity_purchase[0];
-    //         let max_supply_qty = &quantity_produce[prices_len - 1];
-    //         if max_demand_qty > max_supply_qty {
-    //             max_demand_qty;
-    //         }
-    //         max_supply_qty
-    //     };
+        let max_range = {
+            let max_demand_qty = &quantity_purchase[0];
+            let max_supply_qty = &quantity_produce[prices_len - 1];
+            if max_demand_qty > max_supply_qty {
+                max_demand_qty;
+            }
+            max_supply_qty
+        };
 
-    //     let max_domain = prices[prices_len - 1];
+        let max_domain = prices[prices_len - 1];
 
-    //     // Get demand function
-    //     let (demand_m, demand_b) = linreg::Linreg::linear_regress(&prices, &quantity_produce)?;
+        // Get demand function
+        let (demand_m, demand_b) = linreg::Linreg::linear_regress(&prices, &quantity_produce)?;
 
-    //     // Get supply function
-    //     let (demand_m, demand_b) = linreg::Linreg::linear_regress(&prices, &quantity_produce)?;
+        // Get supply function
+        let (supply_m, supply_b) = linreg::Linreg::linear_regress(&prices, &quantity_purchase)?;
 
-    //     // Setup filepath / directory on which folder to save it
-    //     let dt = Utc::now();
-    //     let timestamp: i64 = dt.timestamp();
+        // Setup filepath / directory on which folder to save it
+        let dt = Utc::now();
+        let timestamp: i64 = dt.timestamp();
 
-    //     let dir = directory.unwrap_or("chart_outputs".to_string());
+        let dir = directory.unwrap_or("chart_outputs".to_string());
 
-    //     fs::create_dir_all(&dir)?;
+        fs::create_dir_all(&dir)?;
 
-    //     let filepath = format!("{}/{}_scatterplot.png", &dir, timestamp);
+        let filepath = format!("{}/{}_scatterplot.png", &dir, timestamp);
 
-    //     // Build drawing area
-    //     let drawing_area =
-    //         BitMapBackend::new(&filepath, (height.unwrap_or(1024), width.unwrap_or(768)))
-    //             .into_drawing_area();
+        // Build drawing area
+        let drawing_area =
+            BitMapBackend::new(&filepath, (height.unwrap_or(1024), width.unwrap_or(768)))
+                .into_drawing_area();
 
-    //     drawing_area.fill(&WHITE)?;
+        drawing_area.fill(&WHITE)?;
 
-    //     // Set domain spec (Minimum value to Maximum value)
-    //     let x_spec = 0.0..max_domain;
-    //     let y_spec = 0.0..max_range.clone();
+        // Set domain spec (Minimum value to Maximum value)
+        let x_spec = 0.0..max_domain;
+        let y_spec = 0.0..max_range.clone();
 
-    //     // Set title at top of the graph
-    //     let caption = format!("{} Scatterplot", title);
-    //     let font_style = ("sans-serif", 25.0).into_font();
+        // Set title at top of the graph
+        let caption = format!("{} Demand and Supply", title);
+        let font_style = ("sans-serif", 25.0).into_font();
 
-    //     // Set x and y labels
-    //     let mut chart_builder = ChartBuilder::on(&drawing_area);
-    //     let mut scatterplot = chart_builder
-    //         .x_label_area_size(40)
-    //         .y_label_area_size(40)
-    //         .caption(caption, font_style)
-    //         .build_cartesian_2d(x_spec, y_spec)?;
+        // Set x and y labels
+        let mut chart_builder = ChartBuilder::on(&drawing_area);
+        let mut scatterplot = chart_builder
+            .x_label_area_size(40)
+            .y_label_area_size(40)
+            .caption(caption, font_style)
+            .build_cartesian_2d(x_spec, y_spec)?;
 
-    //     scatterplot
-    //         .configure_mesh()
-    //         .disable_x_mesh()
-    //         .disable_y_mesh()
-    //         .x_desc(domain_label)
-    //         .y_desc(range_label)
-    //         .draw()?;
+        // Draw line series for demand
+        let demand_regression_line_data = (0..max_domain.to_i32().unwrap())
+            .collect::<Vec<i32>>()
+            .iter()
+            .map(|x| {
+                (
+                    x.to_f32().unwrap(),
+                    ((demand_m * x.to_f32().unwrap()) + demand_b),
+                )
+            })
+            .collect::<Vec<(f32, f32)>>();
 
-    //     scatterplot.draw_series(circles)?;
+        let demand_regression_line =
+            LineSeries::new(demand_regression_line_data, BLUE.stroke_width(2));
 
-    //     // Draw line series using regression_points
-    //     let regression_line_data = (0..max_domain.to_i32().unwrap())
-    //         .collect::<Vec<i32>>()
-    //         .iter()
-    //         .map(|x| (x.to_f32().unwrap(), ((m * x.to_f32().unwrap()) + b)))
-    //         .collect::<Vec<(f32, f32)>>();
+        // Draw line series for supply
+        let supply_regression_line_data = (0..max_domain.to_i32().unwrap())
+            .collect::<Vec<i32>>()
+            .iter()
+            .map(|x| {
+                (
+                    x.to_f32().unwrap(),
+                    ((supply_m * x.to_f32().unwrap()) + supply_b),
+                )
+            })
+            .collect::<Vec<(f32, f32)>>();
 
-    //     let regression_line = LineSeries::new(regression_line_data, PURPLE.stroke_width(2));
+        let supply_regression_line =
+            LineSeries::new(supply_regression_line_data, GREEN.stroke_width(2));
 
-    //     // Fill in moving averages line data series
-    //     scatterplot.draw_series(regression_line)?;
+        scatterplot.draw_series(demand_regression_line)?;
 
-    //     drawing_area.present().expect(&format!(
-    //         "Cannot write into {:?}. Directory does not exists.",
-    //         &dir
-    //     ));
+        scatterplot.draw_series(supply_regression_line)?;
 
-    //     println!("Scatterplot has been saved to {}", filepath);
+        drawing_area.present().expect(&format!(
+            "Cannot write into {:?}. Directory does not exists.",
+            &dir
+        ));
 
-    //     return Ok(true);
-    // }
+        println!("Demand and Supply Graph has been saved to {}", filepath);
+
+        return Ok(true);
+    }
 }
