@@ -7,7 +7,10 @@ pub struct Linreg {}
 
 // Least Squares Method
 impl Linreg {
-    pub fn linear_regress(domain: Vec<f32>, range: Vec<f32>) -> Result<(f32, f32), Box<dyn Error>> {
+    pub fn linear_regress(
+        domain: &Vec<f32>,
+        range: &Vec<f32>,
+    ) -> Result<(f32, f32), Box<dyn Error>> {
         let domain_len = domain.len();
         let range_len = range.len();
 
@@ -20,13 +23,13 @@ impl Linreg {
         }
 
         // Get x̄ (domain)
-        let domain_mean = &domain.iter().fold(0.0, |mut acc, x| {
+        let domain_mean = domain.iter().fold(0.0, |mut acc, x| {
             acc = acc + x;
             return acc;
         }) / domain_len.to_f32().unwrap();
 
         // Get ȳ (range)
-        let range_mean = &range.iter().fold(0.0, |mut acc, y| {
+        let range_mean = range.iter().fold(0.0, |mut acc, y| {
             acc = acc + y;
             return acc;
         }) / range_len.to_f32().unwrap();
