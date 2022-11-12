@@ -91,3 +91,31 @@ fn it_returns_error_because_domain_range_is_empty() {
         Err(err) => assert_eq!(err.to_string(), "Insufficient series lengths"),
     }
 }
+
+#[test]
+fn it_successfully_shows_demand_supply_graph() {
+    let prices = vec![15.25, 15.50, 15.75, 16.00, 16.25, 16.50, 16.75, 17.00];
+    let quantity_purchase = vec![
+        3456.00, 3005.00, 2546.00, 2188.00, 1678.00, 1290.00, 889.00, 310.00,
+    ];
+    let quantity_produce = vec![
+        310.00, 889.00, 1290.00, 1678.00, 2188.00, 2546.00, 3005.00, 3456.00,
+    ];
+
+    let result = business_modelling::BusinessModelling::demand_supply_scatterplot(
+        &prices,
+        &quantity_purchase,
+        &quantity_produce,
+        Some(16.125),
+        "Pet Store".to_string(),
+        None,
+        None,
+        None,
+    );
+    match result {
+        Ok(_) => {
+            assert!(true);
+        }
+        Err(err) => println!("Error in showing scatterplot {:?}", err),
+    }
+}
