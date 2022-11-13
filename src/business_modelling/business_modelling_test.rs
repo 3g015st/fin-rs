@@ -116,6 +116,6 @@ fn it_successfully_shows_demand_supply_graph() {
         Ok(_) => {
             assert!(true);
         }
-        Err(err) => println!("Error in showing scatterplot {:?}", err),
+        Err(err) => println!("Error in showing supply and demand scatterplot {:?}", err),
     }
 }
