@@ -291,4 +291,35 @@ impl BusinessModelling {
 
         return Ok(true);
     }
+
+    pub fn expense_revenue_graph(
+        prices: &Vec<f32>,
+        quantity_purchase: &Vec<f32>,
+        quantity_produce: &Vec<f32>,
+        price: Option<f32>,
+        title: String,
+        directory: Option<String>,
+        height: Option<u32>,
+        width: Option<u32>,
+    ) -> Result<bool, Box<dyn Error>> {
+        // Get expense function by taking manufacturing cost per product and fixed cost (manufacuring_cost * quantity) + fixed_cost
+
+        // Get demand function constants (demand_m, demand_b)
+
+        // multiply em = manufacturing cost and demand_m, b = multiply demand_b and manufacturing cost
+
+        //  ec = add eb and fixed cost together
+
+        // em + eb (Expense function)
+
+        // Get vertical axis intercept (Set this as end range for y (range))
+        // (em * 0) + eb
+
+        // Get horizontal axis intercept (Set this as end range for x (domain))
+        // eb / em
+
+        // Get revenue function by getting the demand function constants and justing making the given domain (price) squared
+
+        // Build graphs using data
+    }
 }
