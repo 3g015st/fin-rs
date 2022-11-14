@@ -1,4 +1,4 @@
-use std::{error::Error, fs};
+use std::{error::Error, fs, ops::Neg};
 
 use crate::business_modelling::linreg;
 use chrono::Utc;
@@ -295,8 +295,8 @@ impl BusinessModelling {
     pub fn expense_revenue_graph(
         prices: &Vec<f32>,
         quantity_purchase: &Vec<f32>,
-        quantity_produce: &Vec<f32>,
-        price: Option<f32>,
+        fixed_cost: &f32,
+        manufacturing_cost: &f32,
         title: String,
         directory: Option<String>,
         height: Option<u32>,
@@ -305,21 +305,132 @@ impl BusinessModelling {
         // Get expense function by taking manufacturing cost per product and fixed cost (manufacuring_cost * quantity) + fixed_cost
 
         // Get demand function constants (demand_m, demand_b)
+        let (demand_m, demand_b) = linreg::Linreg::linear_regress(&prices, &quantity_purchase)?;
 
         // multiply em = manufacturing cost and demand_m, b = multiply demand_b and manufacturing cost
+        // em + ec (Expense function)
+        let em = manufacturing_cost * demand_m;
+        let eb = manufacturing_cost * demand_b;
 
-        //  ec = add eb and fixed cost together
-
-        // em + eb (Expense function)
+        // eb = add eb and fixed cost together
+        let eb = eb + fixed_cost;
 
         // Get vertical axis intercept (Set this as end range for y (range))
         // (em * 0) + eb
+        let vertical_axis = (em * 0.0) + eb;
 
         // Get horizontal axis intercept (Set this as end range for x (domain))
-        // eb / em
+        // ec / em
+        let horizontal_axis = eb / em.abs();
+
+        println!("HORIZONTAL AXCIS {} {} {}", horizontal_axis, eb, em);
 
         // Get revenue function by getting the demand function constants and justing making the given domain (price) squared
 
-        // Build graphs using data
+        // Get max height / max price where revenue will be made. (-b / 2a)
+        let axis_of_symmetry_price = demand_b.neg() / (2.0 * demand_m);
+
+        let max_revenue =
+            (demand_m * axis_of_symmetry_price.powi(2)) + (demand_b * axis_of_symmetry_price);
+
+        let max_revenue_point = [Circle::new(
+            (axis_of_symmetry_price, max_revenue),
+            5,
+            RED.filled(),
+        )];
+
+        let x_spec = 0.0..horizontal_axis;
+        let y_spec = 0.0..vertical_axis;
+
+        let expense_line_data = (0..=horizontal_axis.to_i32().unwrap())
+            .collect::<Vec<i32>>()
+            .iter()
+            .map(|x| (x.to_f32().unwrap(), ((em * x.to_f32().unwrap()) + eb)))
+            .collect::<Vec<(f32, f32)>>();
+
+        let expense_regression_line = LineSeries::new(expense_line_data, GREEN.stroke_width(2));
+
+        let revenue_line_data = (0..=horizontal_axis.to_i32().unwrap())
+            .collect::<Vec<i32>>()
+            .iter()
+            .map(|x| {
+                let x_f32 = x.to_f32().unwrap();
+
+                (
+                    x.to_f32().unwrap(),
+                    (demand_m * (x_f32 * x_f32)) + (demand_b * x_f32),
+                )
+            })
+            .collect::<Vec<(f32, f32)>>();
+
+        let revenue_regression_line = LineSeries::new(revenue_line_data, PURPLE.stroke_width(2));
+
+        // Setup filepath / directory on which folder to save it
+        let dt = Utc::now();
+        let timestamp: i64 = dt.timestamp();
+
+        let dir = directory.unwrap_or("chart_outputs".to_string());
+
+        fs::create_dir_all(&dir)?;
+
+        let filepath = format!("{}/{}_expense_revenue.png", &dir, timestamp);
+
+        // Build drawing area
+        let drawing_area =
+            BitMapBackend::new(&filepath, (height.unwrap_or(1024), width.unwrap_or(768)))
+                .into_drawing_area();
+
+        drawing_area.fill(&WHITE)?;
+
+        // Set title at top of the graph
+        let caption = format!("{} Expense & Revenue", title);
+        let font_style = ("sans-serif", 25.0).into_font();
+
+        // Set x and y labels
+        let mut chart_builder = ChartBuilder::on(&drawing_area);
+        let mut scatterplot = chart_builder
+            .margin(15)
+            .x_label_area_size(40)
+            .y_label_area_size(40)
+            .caption(caption, font_style)
+            .build_cartesian_2d(x_spec, y_spec)?;
+
+        scatterplot
+            .configure_mesh()
+            .disable_x_mesh()
+            .disable_y_mesh()
+            .x_desc("Price")
+            .y_desc("Fiat")
+            .draw()?;
+
+        scatterplot
+            .draw_series(expense_regression_line)?
+            .label("Expense")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &GREEN));
+
+        scatterplot
+            .draw_series(revenue_regression_line)?
+            .label("Revenue")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &PURPLE));
+
+        scatterplot
+            .draw_series(max_revenue_point)?
+            .label("Max Revenue")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+        scatterplot
+            .configure_series_labels()
+            .background_style(&WHITE.mix(0.8))
+            .border_style(&BLACK)
+            .draw()?;
+
+        drawing_area.present().expect(&format!(
+            "Cannot write into {:?}. Directory does not exists.",
+            &dir
+        ));
+
+        println!("Expense and Revenue Graph has been saved to {}", filepath);
+
+        return Ok(true);
     }
 }
