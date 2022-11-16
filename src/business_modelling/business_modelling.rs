@@ -292,7 +292,7 @@ impl BusinessModelling {
         return Ok(true);
     }
 
-    pub fn expense_revenue_graph(
+    pub fn expense_revenue_breakeven_graph(
         prices: &Vec<f32>,
         quantity_purchase: &Vec<f32>,
         fixed_cost: &f32,
@@ -323,8 +323,6 @@ impl BusinessModelling {
         // ec / em
         let horizontal_axis = eb / em.abs();
 
-        println!("HORIZONTAL AXCIS {} {} {}", horizontal_axis, eb, em);
-
         // Get revenue function by getting the demand function constants and justing making the given domain (price) squared
 
         // Get max height / max price where revenue will be made. (-b / 2a)
@@ -338,6 +336,30 @@ impl BusinessModelling {
             5,
             RED.filled(),
         )];
+
+        /*** Get quadratic equation for breakeven ***/
+        // Make demand_m coefficient positive
+
+        // Make demand_b coefficient negative
+
+        // quadratic_eq_a = demand_m.abs()
+        // quadratic_eq_b = demand_b.neg() + em
+        // quadratic_eq_c = &eb
+
+        // Use quadratic formula to get two points of breakeven prices
+        // quadratic_formula_num_b = -1 * quadratic_eq_b
+        // quadratic_formula_num_b_squared = quadratic_eq_b.powf(2.0)
+        // quadratic_formula_4ac = 4 * (quadratic_eq_a * quadratic_eq_c)
+        // quadratic_formula_numerator_minus = (quadratic_formula_num_b_squared - quadratic_formula_4ac).root()
+        // quadratic_formula_numerator_plus = (quadratic_formula_num_b_squared + quadratic_formula_4ac).root()
+        // quadratic_formula_divisor = 2 * quadratic_eq_a
+
+        // breakeven_price_point_one = quadratic_formula_numerator_minus / quadratic_formula_divisor
+        // breakeven_price_point_two = quadratic_formula_numerator_plus / quadratic_formula_divisor
+
+        // Substitute breakeven_price_point_one at revenue function to get quantity of money need to reach for breakeven
+
+        // Substitute breakeven_price_point_two at revenue function to get quantity of money need to reach for breakeven
 
         let x_spec = 0.0..horizontal_axis;
         let y_spec = 0.0..vertical_axis;
