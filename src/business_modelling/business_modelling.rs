@@ -3,10 +3,12 @@ use std::{error::Error, fs, ops::Neg};
 use crate::business_modelling::linreg;
 use chrono::Utc;
 use plotters::{
-    backend::RGBPixel,
     prelude::{BitMapBackend, ChartBuilder, Circle, IntoDrawingArea, PathElement},
     series::LineSeries,
-    style::{full_palette::PURPLE, Color, IntoFont, BLACK, BLUE, GREEN, RED, WHITE},
+    style::{
+        full_palette::{PURPLE, RED_A700},
+        Color, IntoFont, BLACK, BLUE, GREEN, RED, WHITE,
+    },
 };
 use rust_decimal::prelude::ToPrimitive;
 
@@ -316,11 +318,9 @@ impl BusinessModelling {
         let eb = eb + fixed_cost;
 
         // Get vertical axis intercept (Set this as end range for y (range))
-        // (em * 0) + eb
         let vertical_axis = (em * 0.0) + eb;
 
         // Get horizontal axis intercept (Set this as end range for x (domain))
-        // ec / em
         let horizontal_axis = eb / em.abs();
 
         // Get revenue function by getting the demand function constants and justing making the given domain (price) squared
@@ -338,28 +338,44 @@ impl BusinessModelling {
         )];
 
         /*** Get quadratic equation for breakeven ***/
-        // Make demand_m coefficient positive
-
-        // Make demand_b coefficient negative
-
-        // quadratic_eq_a = demand_m.abs()
-        // quadratic_eq_b = demand_b.neg() + em
-        // quadratic_eq_c = &eb
+        let quadratic_eq_a = demand_m.abs();
+        let quadratic_eq_b = demand_b.neg() + em;
+        let quadratic_eq_c = &eb;
 
         // Use quadratic formula to get two points of breakeven prices
-        // quadratic_formula_num_b = -1 * quadratic_eq_b
-        // quadratic_formula_num_b_squared = quadratic_eq_b.powf(2.0)
-        // quadratic_formula_4ac = 4 * (quadratic_eq_a * quadratic_eq_c)
-        // quadratic_formula_numerator_minus = (quadratic_formula_num_b_squared - quadratic_formula_4ac).root()
-        // quadratic_formula_numerator_plus = (quadratic_formula_num_b_squared + quadratic_formula_4ac).root()
-        // quadratic_formula_divisor = 2 * quadratic_eq_a
+        let quadratic_formula_num_b = -1.0 * quadratic_eq_b;
+        let quadratic_formula_num_b_squared = quadratic_eq_b.powf(2.0);
+        let quadratic_formula_4ac = 4.0 * (quadratic_eq_a * quadratic_eq_c);
+        let quadratic_formula_numerator_minus = quadratic_formula_num_b
+            - (quadratic_formula_num_b_squared - quadratic_formula_4ac).sqrt();
+        let quadratic_formula_numerator_plus = quadratic_formula_num_b
+            + (quadratic_formula_num_b_squared - quadratic_formula_4ac).sqrt();
+        let quadratic_formula_divisor = 2.0 * quadratic_eq_a;
 
-        // breakeven_price_point_one = quadratic_formula_numerator_minus / quadratic_formula_divisor
-        // breakeven_price_point_two = quadratic_formula_numerator_plus / quadratic_formula_divisor
+        let breakeven_price_point_one =
+            quadratic_formula_numerator_minus / quadratic_formula_divisor;
+        let breakeven_price_point_two =
+            quadratic_formula_numerator_plus / quadratic_formula_divisor;
 
         // Substitute breakeven_price_point_one at revenue function to get quantity of money need to reach for breakeven
-
+        let breakeven_qty_one =
+            (demand_m * breakeven_price_point_one.powi(2)) + (demand_b * breakeven_price_point_one);
         // Substitute breakeven_price_point_two at revenue function to get quantity of money need to reach for breakeven
+        let breakeven_qty_two =
+            (demand_m * breakeven_price_point_two.powi(2)) + (demand_b * breakeven_price_point_two);
+
+        let breakeven_points = [
+            Circle::new(
+                (breakeven_price_point_one, breakeven_qty_one),
+                5,
+                BLUE.filled(),
+            ),
+            Circle::new(
+                (breakeven_price_point_two, breakeven_qty_two),
+                5,
+                BLUE.filled(),
+            ),
+        ];
 
         let x_spec = 0.0..horizontal_axis;
         let y_spec = 0.0..vertical_axis;
@@ -380,7 +396,7 @@ impl BusinessModelling {
 
                 (
                     x.to_f32().unwrap(),
-                    (demand_m * (x_f32 * x_f32)) + (demand_b * x_f32),
+                    (demand_m * x_f32.powf(2.0)) + (demand_b * x_f32),
                 )
             })
             .collect::<Vec<(f32, f32)>>();
@@ -395,7 +411,7 @@ impl BusinessModelling {
 
         fs::create_dir_all(&dir)?;
 
-        let filepath = format!("{}/{}_expense_revenue.png", &dir, timestamp);
+        let filepath = format!("{}/{}_expense_revenue_breakeven.png", &dir, timestamp);
 
         // Build drawing area
         let drawing_area =
@@ -411,9 +427,9 @@ impl BusinessModelling {
         // Set x and y labels
         let mut chart_builder = ChartBuilder::on(&drawing_area);
         let mut scatterplot = chart_builder
-            .margin(15)
-            .x_label_area_size(40)
-            .y_label_area_size(40)
+            .margin(25)
+            .x_label_area_size(50)
+            .y_label_area_size(50)
             .caption(caption, font_style)
             .build_cartesian_2d(x_spec, y_spec)?;
 
@@ -439,6 +455,14 @@ impl BusinessModelling {
             .draw_series(max_revenue_point)?
             .label("Max Revenue")
             .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+        scatterplot
+            .draw_series(breakeven_points)?
+            .label(format!(
+                "Breakeven Points [{},{}]",
+                breakeven_qty_one, breakeven_qty_two
+            ))
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
 
         scatterplot
             .configure_series_labels()
