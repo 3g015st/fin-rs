@@ -6,7 +6,7 @@ use plotters::{
     prelude::{BitMapBackend, ChartBuilder, Circle, IntoDrawingArea, PathElement},
     series::LineSeries,
     style::{
-        full_palette::{PURPLE, RED_A700},
+        full_palette::{BROWN, ORANGE, PURPLE, RED_A700},
         Color, IntoFont, BLACK, BLUE, GREEN, RED, WHITE,
     },
 };
@@ -294,7 +294,7 @@ impl BusinessModelling {
         return Ok(true);
     }
 
-    pub fn expense_revenue_breakeven_graph(
+    pub fn model(
         prices: &Vec<f32>,
         quantity_purchase: &Vec<f32>,
         fixed_cost: &f32,
@@ -326,13 +326,13 @@ impl BusinessModelling {
         // Get revenue function by getting the demand function constants and justing making the given domain (price) squared
 
         // Get max height / max price where revenue will be made. (-b / 2a)
-        let axis_of_symmetry_price = demand_b.neg() / (2.0 * demand_m);
+        let axis_of_symmetry_revenue_price = demand_b.neg() / (2.0 * demand_m);
 
-        let max_revenue =
-            (demand_m * axis_of_symmetry_price.powi(2)) + (demand_b * axis_of_symmetry_price);
+        let max_revenue = (demand_m * axis_of_symmetry_revenue_price.powi(2))
+            + (demand_b * axis_of_symmetry_revenue_price);
 
         let max_revenue_point = [Circle::new(
-            (axis_of_symmetry_price, max_revenue),
+            (axis_of_symmetry_revenue_price, max_revenue),
             5,
             RED.filled(),
         )];
@@ -377,6 +377,25 @@ impl BusinessModelling {
             ),
         ];
 
+        /*** Get profit equation ***/
+        // P = R - E
+        let profit_a = &demand_m;
+        let profit_b = demand_b + (-1.0 * em);
+        let profit_c = -1.0 * eb;
+
+        let axis_of_symmetry_profit_price = profit_b.neg() / (2.0 * profit_a);
+
+        // Quadratic formula
+        let max_profit = (profit_a * axis_of_symmetry_profit_price.powi(2))
+            + (profit_b * axis_of_symmetry_profit_price)
+            + profit_c;
+
+        let max_profit_point = [Circle::new(
+            (axis_of_symmetry_profit_price, max_profit),
+            5,
+            ORANGE.filled(),
+        )];
+
         let x_spec = 0.0..horizontal_axis;
         let y_spec = 0.0..vertical_axis;
 
@@ -403,6 +422,21 @@ impl BusinessModelling {
 
         let revenue_regression_line = LineSeries::new(revenue_line_data, PURPLE.stroke_width(2));
 
+        let profit_line_data = (0..=horizontal_axis.to_i32().unwrap())
+            .collect::<Vec<i32>>()
+            .iter()
+            .map(|x| {
+                let x_f32 = x.to_f32().unwrap();
+
+                (
+                    x_f32,
+                    (profit_a * x_f32.powf(2.0)) + (profit_b * x_f32) + profit_c,
+                )
+            })
+            .collect::<Vec<(f32, f32)>>();
+
+        let profit_regression_line = LineSeries::new(profit_line_data, BROWN.stroke_width(2));
+
         // Setup filepath / directory on which folder to save it
         let dt = Utc::now();
         let timestamp: i64 = dt.timestamp();
@@ -411,7 +445,7 @@ impl BusinessModelling {
 
         fs::create_dir_all(&dir)?;
 
-        let filepath = format!("{}/{}_expense_revenue_breakeven.png", &dir, timestamp);
+        let filepath = format!("{}/{}_business_model.png", &dir, timestamp);
 
         // Build drawing area
         let drawing_area =
@@ -429,7 +463,7 @@ impl BusinessModelling {
         let mut scatterplot = chart_builder
             .margin(25)
             .x_label_area_size(50)
-            .y_label_area_size(50)
+            .y_label_area_size(70)
             .caption(caption, font_style)
             .build_cartesian_2d(x_spec, y_spec)?;
 
@@ -452,9 +486,19 @@ impl BusinessModelling {
             .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &PURPLE));
 
         scatterplot
+            .draw_series(profit_regression_line)?
+            .label("Profit")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BROWN));
+
+        scatterplot
             .draw_series(max_revenue_point)?
             .label("Max Revenue")
             .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+        scatterplot
+            .draw_series(max_profit_point)?
+            .label("Max Profit")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &ORANGE));
 
         scatterplot
             .draw_series(breakeven_points)?
@@ -475,7 +519,7 @@ impl BusinessModelling {
             &dir
         ));
 
-        println!("Expense and Revenue Graph has been saved to {}", filepath);
+        println!("Business Model has been saved to {}", filepath);
 
         return Ok(true);
     }
