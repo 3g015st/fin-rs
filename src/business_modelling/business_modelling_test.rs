@@ -121,7 +121,7 @@ fn it_successfully_shows_demand_supply_graph() {
 }
 
 #[test]
-fn it_successfully_shows_expense_revenue_breakeven_graph() {
+fn it_successfully_shows_business_model_graph() {
     let prices = vec![15.25, 15.50, 15.75, 16.00, 16.25, 16.50, 16.75, 17.00];
     let quantity_purchase = vec![
         3456.00, 3005.00, 2546.00, 2188.00, 1678.00, 1290.00, 889.00, 310.00,
@@ -130,7 +130,7 @@ fn it_successfully_shows_expense_revenue_breakeven_graph() {
     let fixed_cost = 9_000.00;
     let manufacturing_cost = 5.0;
 
-    let result = business_modelling::BusinessModelling::expense_revenue_breakeven_graph(
+    let result = business_modelling::BusinessModelling::model(
         &prices,
         &quantity_purchase,
         &fixed_cost,
